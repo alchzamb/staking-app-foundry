@@ -21,35 +21,34 @@ contract StakingAppTest is Test {
 
     //StakingApp Parameters
     address owner_ = vm.addr(1);
-    uint256 stakingPeriod_ = 1000000000000; 
+    uint256 stakingPeriod_ = 1000000000000;
     uint256 fixedStakingAmount_ = 10;
     uint256 rewardPerPeriod_ = 1 ether;
 
     address randomUser = vm.addr(2);
 
-    //1._ SETUP: necesitamos inicializar los contratos de StakingToken y StakingApp para poder 
+    //1._ SETUP: necesitamos inicializar los contratos de StakingToken y StakingApp para poder
     //usarlos en los test
     function setUp() external {
         //setUp: función reservada por Foundry, que se va a ejecutar siempre ante de cada test
         //de esta forma siempre tendremos la inicialización de nuestros smart contracts
         //inicializo el objeto StakingToken:
         stakingToken = new StakingToken(name_, symbol_);
-        stakingApp = new StakingApp(address(stakingToken), owner_, stakingPeriod_, fixedStakingAmount_, rewardPerPeriod_);
+        stakingApp =
+            new StakingApp(address(stakingToken), owner_, stakingPeriod_, fixedStakingAmount_, rewardPerPeriod_);
     }
 
     //2._ TEST
 
     //1._test: testear si los smart contract se han deployeado correctamente
-    function testStakingTokenCorrectlyDeployed() external view{
+    function testStakingTokenCorrectlyDeployed() external view {
         //Testeamos si la address del Staking Token es distinta a la address(0), es decir, si tiene una address real
         assert(address(stakingToken) != address(0));
-
     }
 
-    function testStakingAppCorrectlyDeployed() external view{
+    function testStakingAppCorrectlyDeployed() external view {
         //Testeamos si la address del Staking Token es distinta a la address(0), es decir, si tiene una address real
         assert(address(stakingApp) != address(0));
-
     }
 
     //2._ test: changeStakingPeriod falla ya que la llama alguien que no es el Owner
@@ -66,17 +65,15 @@ contract StakingAppTest is Test {
         vm.startPrank(owner_);
         uint256 newStakingPeriod = 1;
 
-        //Capturo el valor de stakingPeriod antes y después, para luego verificar la validación 
+        //Capturo el valor de stakingPeriod antes y después, para luego verificar la validación
         //con los assert
         uint256 stakingPeriodBefore = stakingApp.stakingPeriod();
         stakingApp.changeStakingPeriod(newStakingPeriod);
         uint256 stakingPeriodAfter = stakingApp.stakingPeriod();
 
-
         assert(stakingPeriodBefore != newStakingPeriod);
         assert(stakingPeriodAfter == newStakingPeriod);
         vm.stopPrank();
-
     }
 
     //4._ test: Vamos a testear que el smart contract pueda recibir ether, es decir la funcón receive:
@@ -85,10 +82,10 @@ contract StakingAppTest is Test {
         vm.deal(owner_, 1 ether); //"llenamos" la cuenta con 1 ether (red local)
         //Recibimos Ether con la función call
         uint256 etherValue = 1 ether;
-        
+
         //capturo la cantidad de Ether que tiene mi Smart Contract: address(this).balance;
-        uint256 balanceBefore = address(stakingApp).balance; 
-        (bool success, ) = address(stakingApp).call{value: etherValue}("");
+        uint256 balanceBefore = address(stakingApp).balance;
+        (bool success,) = address(stakingApp).call{value: etherValue}("");
         uint256 balanceAfter = address(stakingApp).balance;
         require(success, "Transfer Failed");
 
@@ -131,7 +128,6 @@ contract StakingAppTest is Test {
         assert(userBalanceAfter - userBalanceBefore == tokenAmount);
         assert(elapsePeriodBefore == 0);
         assert(elapsePeriodAfter == block.timestamp);
-        
 
         vm.stopPrank();
     }
@@ -179,7 +175,6 @@ contract StakingAppTest is Test {
         //El balance debe ser el mismo, antes y después de retirar fondos que no tenemos
         assert(userBalanceAfter == userBalanceBefore);
         vm.stopPrank();
-
     }
 
     //9._ test: Intentamos retirar fondos que si tenemos
@@ -207,7 +202,7 @@ contract StakingAppTest is Test {
 
         //Ahora hacemos la llamada a withDraw
 
-        //Saco el balance del usuario: 
+        //Saco el balance del usuario:
         uint256 userBalanceBefore2 = IERC20(stakingToken).balanceOf(randomUser);
         //Calculamos cuanto es el balance del usuario antes del retiro
         uint256 userBalanceInMapping = stakingApp.userBalance(randomUser);
@@ -217,15 +212,13 @@ contract StakingAppTest is Test {
         assert(userBalanceAfter2 == userBalanceBefore2 + userBalanceInMapping);
 
         vm.stopPrank();
-
     }
-    
+
     //Claim rewards Function test
     //10._ test://Comprueba que si no estamos haciendo staking, no podemos llamar a Claim Reward
     //require(userBalance[msg.sender] == fixedStakingAmount, "Not staking");
     function testCanNotClaimIfNotStaking() external {
         vm.startPrank(randomUser);
-
 
         //Como el usuario randomUser no está stakeando, debería revertir
         vm.expectRevert("Not staking");
@@ -258,7 +251,7 @@ contract StakingAppTest is Test {
         assert(elapsePeriodBefore == 0);
         assert(elapsePeriodAfter == block.timestamp);
 
-        //Como las funciones se ejecutan todas de golpe (atómicamente), no hay suficiente 
+        //Como las funciones se ejecutan todas de golpe (atómicamente), no hay suficiente
         //tiempo que supere el stakingPeriod, por lo tanto debería revertir
         vm.expectRevert("Need to wait");
         stakingApp.claimRewards();
@@ -340,7 +333,7 @@ contract StakingAppTest is Test {
         //Aquí mandamos el ether
         uint256 etherAmount = 100000 ether;
         vm.deal(owner_, etherAmount);
-        (bool success, ) = address(stakingApp).call{value: etherAmount}("");
+        (bool success,) = address(stakingApp).call{value: etherAmount}("");
         require(success, "Test Transfer Failed");
         vm.stopPrank();
 
@@ -354,20 +347,6 @@ contract StakingAppTest is Test {
         assert(etherAmountAfter - etherAmountBefore == rewardPerPeriod_);
         assert(elapsedPeriod == block.timestamp); //Testeamos que el elapsedPeriod se ha modificado
 
-
         vm.stopPrank();
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

@@ -9,9 +9,9 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 //Ejemplo: si sr = 1 día, el usuario debería esperar 1 día para poder recoger rewards
 
 contract StakingApp is Ownable {
-    //1._ StakingToken address: queremos que cuando inicialicemos nuestra StakingApp recibir por 
+    //1._ StakingToken address: queremos que cuando inicialicemos nuestra StakingApp recibir por
     //parámetro la address del token que vamos a utilizar para hacer Staking
-    //2._ Un admin: para hacer el access control, meter fees. Es decir como si fuera un protocolo 
+    //2._ Un admin: para hacer el access control, meter fees. Es decir como si fuera un protocolo
     //real de Staking.
 
     //Variables
@@ -20,10 +20,10 @@ contract StakingApp is Ownable {
     uint256 public fixedStakingAmount;
     uint256 public rewardPerPeriod;
     //Para comprobar y actualizar los balances de cada usuario hacemos un mapping
-    mapping (address => uint256) public userBalance;
+    mapping(address => uint256) public userBalance;
     //Queremos saber cuando el usuario empezó a stakear, para calcular su tiempo de stakeo
     //y con ello definir si puede o no acceder a sus reward. Usaremos otro mapping:
-    mapping (address => uint256) public elapsePeriod;
+    mapping(address => uint256) public elapsePeriod;
 
     //Events
 
@@ -34,14 +34,20 @@ contract StakingApp is Ownable {
     //evento de retiro
     event WithdrawTokens(address userAddress_, uint256 withdrawAmount_);
     event EtherSent(uint256 amount_);
-    
-    //cuando escribes Ownable(owner_) en la firma de tu constructor, le estás diciendo a Solidity: 
-    //"antes de ejecutar el cuerpo de mi constructor, ejecuta primero el constructor del 
+
+    //cuando escribes Ownable(owner_) en la firma de tu constructor, le estás diciendo a Solidity:
+    //"antes de ejecutar el cuerpo de mi constructor, ejecuta primero el constructor del
     //padre (Ownable) y pásale este valor".
 
     //stakingToken_: token que vamos a usar para depositar el staking
     //owner_: el admin como tal
-    constructor(address stakingToken_, address owner_, uint256 stakingPeriod_, uint256 fixedStakingAmount_, uint256 rewardPerPeriod_) Ownable(owner_) {
+    constructor(
+        address stakingToken_,
+        address owner_,
+        uint256 stakingPeriod_,
+        uint256 fixedStakingAmount_,
+        uint256 rewardPerPeriod_
+    ) Ownable(owner_) {
         stakingToken = stakingToken_;
         stakingPeriod = stakingPeriod_;
         fixedStakingAmount = fixedStakingAmount_; //regla de mi staking: solo 10 tokens
@@ -52,7 +58,7 @@ contract StakingApp is Ownable {
 
     //External functions
     //1._ Deposit
-    //Vamos a usar transferFrom() ya que mi smart contract usando la función de "deposit" 
+    //Vamos a usar transferFrom() ya que mi smart contract usando la función de "deposit"
     //va a coger los tokens y además, actualizar los datos del contrato
     //ese es el motivo por el cual usaremos transferFrom() en vez de transfer()
     //Y nuestro usario va a tener que hacer un approve antes de ello
@@ -67,7 +73,7 @@ contract StakingApp is Ownable {
         //interfaz + address
         //transferFrom(from, to, amount)
         //from: la cartera de la que sacamos el dinero, que es quien está llamando a la función msg.sender
-        //to: a que dirección queremos mandar los tokens, en este caso la dirección de mi smart contract 
+        //to: a que dirección queremos mandar los tokens, en este caso la dirección de mi smart contract
         //StakingApp.sol ¿Cómo obtenemos ésta dirección? --> address(this)
         IERC20(stakingToken).transferFrom(msg.sender, address(this), tokenAmountToDeposit_);
         //accedemos a la cartera del usuario que está llamando
@@ -76,7 +82,6 @@ contract StakingApp is Ownable {
 
         emit DepositTokens(msg.sender, tokenAmountToDeposit_);
     }
-
 
     //2._ Withdraw
     //Dada la lógica de nuestro contrato, si permitimos que el usuario retire algo de sus tokens,
@@ -92,7 +97,7 @@ contract StakingApp is Ownable {
         uint256 userBalance_ = userBalance[msg.sender]; //primero guardo aquí su balance
         //CEI PATTERN: primero actualizo su saldo, y luego le transfiero los fondos
         //En este caso, como estamos usando las librerías de openzeppelin, no se triggea
-        //ninguna función, sin embargo, como buena práctica, mantendremos la filosofía de 
+        //ninguna función, sin embargo, como buena práctica, mantendremos la filosofía de
         //trabajo CEI PATTERN --> 1._ Checks 2._ Effects 3._ Interactions
         userBalance[msg.sender] = 0; //como ya retiró sus 10 tokens, actualizo que su saldo es cero
         IERC20(stakingToken).transfer(msg.sender, userBalance_);
@@ -100,7 +105,6 @@ contract StakingApp is Ownable {
 
         emit WithdrawTokens(msg.sender, userBalance_);
     }
-
 
     //3._ Claim Rewards
     function claimRewards() external {
@@ -117,14 +121,14 @@ contract StakingApp is Ownable {
         require(elapsePeriod_ >= stakingPeriod, "Need to wait");
 
         //3._ Update state
-        //Reiniciamos el reloj 
+        //Reiniciamos el reloj
         elapsePeriod[msg.sender] = block.timestamp;
 
         //4._ Transfer rewards
         //Definimos la recompensa retirable por cada periodo, y transferimos
-        (bool success, ) = msg.sender.call{value: rewardPerPeriod}("");
+        (bool success,) = msg.sender.call{value: rewardPerPeriod}("");
         //IMPORTANTE: ponemos un require, para asegurarnos que se ha transferido con éxito
-        //La función .call nos devuelve si el dinero se ha transferido con éxito o no, 
+        //La función .call nos devuelve si el dinero se ha transferido con éxito o no,
         // pero no revierte la transacción, he aquí la importancia de validar con el require
         require(success, "Transfer failed");
     }
@@ -135,7 +139,7 @@ contract StakingApp is Ownable {
     //Vamos a esperar que sea el Owner como tal quien mande Ether cuando haga falta
 
     //function feedContract() external payable onlyOwner {}
-    //Podríamos usar la linea de arriba, pero, para estudiar más cosas, vamos a usar receive, 
+    //Podríamos usar la linea de arriba, pero, para estudiar más cosas, vamos a usar receive,
     //que hace exactamente lo mismo.
     receive() external payable onlyOwner {
         emit EtherSent(msg.value);
@@ -145,9 +149,8 @@ contract StakingApp is Ownable {
 
     //Luego de deployeado el contrato, el staking period quedaría fijo.
     //Vamos a crear una función para modificar el staking period, y que solo la pueda ejecutar el admin
-    function changeStakingPeriod(uint256 newStakingPeriod_) external onlyOwner{
+    function changeStakingPeriod(uint256 newStakingPeriod_) external onlyOwner {
         stakingPeriod = newStakingPeriod_;
         emit ChangeStakingPeriod(newStakingPeriod_);
     }
-
 }
